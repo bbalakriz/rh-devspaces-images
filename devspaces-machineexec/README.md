@@ -217,4 +217,4 @@ echo hello
 
 Downstream builds can be found at the link below, which is _internal to Red Hat_. Stable builds can be found by replacing the 3.x with a specific version like 3.2. 
 
-- [machineexec_3.x](https://main-jenkins-csb-crwqe.apps.ocp-c1.prod.psi.redhat.com/job/DS_CI/job/machineexec_3.x/)
+- [machineexec_3.x](https://jenkins-csb-crwqe-main.dno.corp.redhat.com/job/DS_CI/job/machineexec_3.x/)
