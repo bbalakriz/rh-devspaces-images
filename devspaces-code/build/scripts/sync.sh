@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
 #
 # Copyright (c) 2022-2023 Red Hat, Inc.
 # This program and the accompanying materials are made
@@ -75,7 +76,7 @@ sources.spec
 /tests/basic-test.yaml
 " > /tmp/rsync-excludes
 echo "Rsync ${SOURCEDIR} to ${TARGETDIR}"
-rsync -azrlt --checksum --exclude-from /tmp/rsync-excludes --delete "${SOURCEDIR}"/ "${TARGETDIR}"/
+rsync -azrlt --checksum --delete "${SOURCEDIR}"/ "${TARGETDIR}"/ --exclude-from /tmp/rsync-excludes 
 rm -f /tmp/rsync-excludes
 
 # ensure shell scripts are executable
@@ -104,7 +105,7 @@ pushd "${TARGETDIR}"/ >/dev/null
   DOCKERFILE_YAML_BUILD_COMMAND=
 
   # collect list of modules from 'code/build/npm/dirs.js' (except the 'test' folder) 
-  readarray -t NPM_MODULES  < <(cat code/build/npm/dirs.js | sed -n "/const dirs/,/]/{/'/p};" | sed "s/,//g;s/\s'/devspaces-code\/code\//g;s/'//g;/devspaces-code\/code\/test/d")
+  readarray -t NPM_MODULES < <(cat code/build/npm/dirs.js | sed -n "/const dirs/,/]/ { /'/p; }" | sed "s/,//g;s/\s'/code\/code\//g;s/'//g;/code\/code\/test/d")
 
   # prepare generated content 
   for npm_module in "${NPM_MODULES[@]}"; do
@@ -138,6 +139,6 @@ pushd "${TARGETDIR}"/ >/dev/null
   # --- END update container.yaml and brew.Dockerfile
 
   # --- BEGIN fetch-artifacts-url.yaml - generate list checksums
-  "${TARGETDIR}"/build/scripts/sync-builtins.sh -t ${TARGETDIR} -v ${DS_VERSION}
+  # "${TARGETDIR}"/build/scripts/sync-builtins.sh -t ${TARGETDIR} -v ${DS_VERSION}
   # --- END fetch-artifacts-url.yaml
 popd >/dev/null
