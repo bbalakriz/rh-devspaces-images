@@ -253,39 +253,39 @@ addVscodePluginsToYaml () {
     fi
     if [[ $PLUGIN_SHA == "" ]]; then
       echo "[info] not found required ripgrep prebuilt extension for ${REQUIRED_VSIX_VERSION}"
-      echo "[info] downloading and publishing to rcm-tools now"
-      pushd $PLUGIN_DIR >/dev/null
-        git checkout "${SCRIPTS_BRANCH}"
-        git stash
-        git pull
-        git stash pop || true
+      #echo "[info] downloading and publishing to rcm-tools now"
+      #pushd $PLUGIN_DIR >/dev/null
+        #git checkout "${SCRIPTS_BRANCH}"
+        #git stash
+        #git pull
+        #git stash pop || true
 
-        replaceField ".Plugins.\"${PLUGIN}\".revision" "\"v${REQUIRED_VSIX_VERSION}\"" $PLUGIN_DIR/plugin-config.json
-        ./build/build.sh "$PLUGIN" --update-manifest
+        #replaceField ".Plugins.\"${PLUGIN}\".revision" "\"v${REQUIRED_VSIX_VERSION}\"" $PLUGIN_DIR/plugin-config.json
+        #./build/build.sh "$PLUGIN" --update-manifest
 
-        PLUGIN_SHA=$(sha256sum "${PLUGIN}.vsix")
-        PLUGIN_SHA=${PLUGIN_SHA:0:64}
+        #PLUGIN_SHA=$(sha256sum "${PLUGIN}.vsix")
+        #PLUGIN_SHA=${PLUGIN_SHA:0:64}
 
-        SOURCE_SHA=$(sha256sum "${PLUGIN}-sources.tar.gz")
-        SOURCE_SHA=${SOURCE_SHA:0:64}
+        #SOURCE_SHA=$(sha256sum "${PLUGIN}-sources.tar.gz")
+        #SOURCE_SHA=${SOURCE_SHA:0:64}
 
-        echo "[info] sha: ${PLUGIN_SHA}"
-        echo "[info] source_sha: ${SOURCE_SHA}"
-        echo "################################################"
-          if [[ $NO_OP != 1 ]]; then
-            if [ ! -f $PLUGIN_DIR/copyVSIXToStage.sh ]; then
-              curl -sSL https://raw.githubusercontent.com/redhat-developer/devspaces/${SCRIPTS_BRANCH}/product/copyVSIXToStage.sh -o $PLUGIN_DIR/copyVSIXToStage.sh
-              chmod +x $PLUGIN_DIR/copyVSIXToStage.sh
-            fi
-            $PLUGIN_DIR/copyVSIXToStage.sh -b ${MIDSTM_BRANCH} -v ${DS_VERSION}
-            git add plugin-config.json
-            git add plugin-manifest.json
-            git commit -sm "ci: Update plugin-manifest data for ${PLUGIN}"
-            git push origin "${SCRIPTS_BRANCH}"
-          else
-            echo "[info] show diff in resulting manifest:"
-            git --no-pager diff
-          fi
+        #echo "[info] sha: ${PLUGIN_SHA}"
+        #echo "[info] source_sha: ${SOURCE_SHA}"
+        #echo "################################################"
+          #if [[ $NO_OP != 1 ]]; then
+            #if [ ! -f $PLUGIN_DIR/copyVSIXToStage.sh ]; then
+              #curl -sSL https://raw.githubusercontent.com/redhat-developer/devspaces/${SCRIPTS_BRANCH}/product/copyVSIXToStage.sh -o $PLUGIN_DIR/copyVSIXToStage.sh
+              #chmod +x $PLUGIN_DIR/copyVSIXToStage.sh
+            #fi
+            #$PLUGIN_DIR/copyVSIXToStage.sh -b ${MIDSTM_BRANCH} -v ${DS_VERSION}
+            #git add plugin-config.json
+            #git add plugin-manifest.json
+            #git commit -sm "ci: Update plugin-manifest data for ${PLUGIN}"
+            #git push origin "${SCRIPTS_BRANCH}"
+          #else
+            #echo "[info] show diff in resulting manifest:"
+            #git --no-pager diff
+          #fi
       popd >/dev/null
 
     fi
