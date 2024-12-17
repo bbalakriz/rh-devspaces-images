@@ -195,19 +195,7 @@ addRipGrepToYaml() {
 }
 
 addVscodePluginsToYaml () {
-  # TODO better handling for git repo cleanup?
-  rm -rf /tmp/devspaces-vscode-extensions || true
-
-  git clone https://github.com/redhat-developer/devspaces-vscode-extensions /tmp/devspaces-vscode-extensions  
-  pushd /tmp/devspaces-vscode-extensions >/dev/null
-    # configure repository for pushing from Jenkins
-    git config user.email "nickboldt+devstudio-release@gmail.com"
-    git config user.name "devstudio-release"
-    git config --global push.default matching
-    git config --global pull.rebase true
-    git config --global hub.protocol https
-    git remote set-url origin https://$GITHUB_TOKEN:x-oauth-basic@github.com/redhat-developer/devspaces-vscode-extensions.git
-  popd >/dev/null
+  PLUGIN_DIR=$WORKSPACE/plugin_sources
   PLUGINS=$(jq -r '.builtInExtensions[] | .name' "$TARGETDIR"/code/product.json)
   # check if vsix plugin version listed in synced sources as dependency
   # has corresponding version on rcm tools
@@ -225,28 +213,28 @@ addVscodePluginsToYaml () {
     # plugin "version" in product.json can be different from 
     # match version in sources with version in manifest
     # if mismatch is found, then fill SHA values with undefined
-    AVAILABLE_VSIX_VERSION=$(jq -r ".Plugins.\"$PLUGIN\".revision" /tmp/devspaces-vscode-extensions/plugin-config.json)
+    AVAILABLE_VSIX_VERSION=$(jq -r ".Plugins.\"$PLUGIN\".revision" $PLUGIN_DIR/plugin-config.json)
     AVAILABLE_VSIX_VERSION_NO_PREFIX=${AVAILABLE_VSIX_VERSION#v}
     REQUIRED_VSIX_VERSION=$(jq -r ".builtInExtensions[] | select( .name==\"${PLUGIN}\") | .version" "$TARGETDIR"/code/product.json)
     echo "[info] looking for plugin \"${PLUGIN}\", version ${REQUIRED_VSIX_VERSION}" 
     if [[ $REQUIRED_VSIX_VERSION == ${AVAILABLE_VSIX_VERSION_NO_PREFIX} ]]; then
       echo "[info] found required vsix extension in manifest - ${PLUGIN}, version ${REQUIRED_VSIX_VERSION}"
       # donwload plugin and sources to check if they exists, and evaluate their SHA
-      curl -sLo /tmp/${plugin}.vsix $PLUGIN_LOCATION
-      curl -sLo /tmp/${plugin}-sources.tar.gz $SOURCE_LOCATION
-      if [[ $(file -b /tmp/${plugin}.vsix) != *"Zip archive data"* 
-      && $(file -b /tmp/${plugin}-sources.tar.gz) != *"gzip compressed data"* ]]; then
+      curl -sLo $PLUGIN_DIR/${plugin}.vsix $PLUGIN_LOCATION
+      curl -sLo $PLUGIN_DIR/${plugin}-sources.tar.gz $SOURCE_LOCATION
+      if [[ $(file -b $PLUGIN_DIR/${plugin}.vsix) != *"Zip archive data"* 
+      && $(file -b $PLUGIN_DIR/${plugin}-sources.tar.gz) != *"gzip compressed data"* ]]; then
         # files are corrupt, and we have to recreate it
         echo "[info] file is not an archive, so it will be recreated"
       else
-        PLUGIN_REMOTE_SHA=$(sha256sum /tmp/${plugin}.vsix)
+        PLUGIN_REMOTE_SHA=$(sha256sum $PLUGIN_DIR/${plugin}.vsix)
         PLUGIN_REMOTE_SHA=${PLUGIN_REMOTE_SHA:0:64}
 
-        PLUGIN_REMOTE_SOURCE_SHA=$(sha256sum /tmp/${plugin}-sources.tar.gz)
+        PLUGIN_REMOTE_SOURCE_SHA=$(sha256sum $PLUGIN_DIR/${plugin}-sources.tar.gz)
         PLUGIN_REMOTE_SOURCE_SHA=${PLUGIN_REMOTE_SOURCE_SHA:0:64}
 
-        PLUGIN_MANIFEST_SHA=$(cat /tmp/devspaces-vscode-extensions/plugin-manifest.json | jq -r ".Plugins[\"$PLUGIN\"][\"vsix\"]")
-        PLUGIN_MANIFEST_SOURCE_SHA=$(cat /tmp/devspaces-vscode-extensions/plugin-manifest.json | jq -r ".Plugins[\"$PLUGIN\"][\"source\"]")
+        PLUGIN_MANIFEST_SHA=$(cat $PLUGIN_DIR/plugin-manifest.json | jq -r ".Plugins[\"$PLUGIN\"][\"vsix\"]")
+        PLUGIN_MANIFEST_SOURCE_SHA=$(cat $PLUGIN_DIR/plugin-manifest.json | jq -r ".Plugins[\"$PLUGIN\"][\"source\"]")
         # if actual SHA and SHA in manifest are different, we need to update the manifest
         if [[ "${PLUGIN_REMOTE_SHA}" != "${PLUGIN_MANIFEST_SHA}" ]]; then
           #TODO add manifest update code
@@ -266,13 +254,13 @@ addVscodePluginsToYaml () {
     if [[ $PLUGIN_SHA == "" ]]; then
       echo "[info] not found required ripgrep prebuilt extension for ${REQUIRED_VSIX_VERSION}"
       echo "[info] downloading and publishing to rcm-tools now"
-      pushd /tmp/devspaces-vscode-extensions >/dev/null
+      pushd $PLUGIN_DIR >/dev/null
         git checkout "${SCRIPTS_BRANCH}"
         git stash
         git pull
         git stash pop || true
 
-        replaceField ".Plugins.\"${PLUGIN}\".revision" "\"v${REQUIRED_VSIX_VERSION}\"" /tmp/devspaces-vscode-extensions/plugin-config.json
+        replaceField ".Plugins.\"${PLUGIN}\".revision" "\"v${REQUIRED_VSIX_VERSION}\"" $PLUGIN_DIR/plugin-config.json
         ./build/build.sh "$PLUGIN" --update-manifest
 
         PLUGIN_SHA=$(sha256sum "${PLUGIN}.vsix")
@@ -285,11 +273,11 @@ addVscodePluginsToYaml () {
         echo "[info] source_sha: ${SOURCE_SHA}"
         echo "################################################"
           if [[ $NO_OP != 1 ]]; then
-            if [ ! -f /tmp/copyVSIXToStage.sh ]; then
-              curl -sSL https://raw.githubusercontent.com/redhat-developer/devspaces/${SCRIPTS_BRANCH}/product/copyVSIXToStage.sh -o /tmp/copyVSIXToStage.sh
-              chmod +x /tmp/copyVSIXToStage.sh
+            if [ ! -f $PLUGIN_DIR/copyVSIXToStage.sh ]; then
+              curl -sSL https://raw.githubusercontent.com/redhat-developer/devspaces/${SCRIPTS_BRANCH}/product/copyVSIXToStage.sh -o $PLUGIN_DIR/copyVSIXToStage.sh
+              chmod +x $PLUGIN_DIR/copyVSIXToStage.sh
             fi
-            /tmp/copyVSIXToStage.sh -b ${MIDSTM_BRANCH} -v ${DS_VERSION}
+            $PLUGIN_DIR/copyVSIXToStage.sh -b ${MIDSTM_BRANCH} -v ${DS_VERSION}
             git add plugin-config.json
             git add plugin-manifest.json
             git commit -sm "ci: Update plugin-manifest data for ${PLUGIN}"
@@ -307,7 +295,6 @@ addVscodePluginsToYaml () {
   source-url: $BASE_URL/devspaces-$DS_VERSION-pluginregistry/sources/$PLUGIN-sources.tar.gz
   source-sha256: $SOURCE_SHA" >> "${TARGETDIR}/fetch-artifacts-url.yaml"
   done
-  rm -rf /tmp/devspaces-vscode-extensions || true
 }
 
 # delete everything in fetch-artifacts-url.yaml except the first line
