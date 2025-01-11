@@ -48,6 +48,7 @@ operator_manifests:
         devspaces-pluginregistry-rhel9-container: devspaces/pluginregistry-rhel9
         devspaces-server-rhel9-container: devspaces/server-rhel9
         devspaces-traefik-rhel9-container: devspaces/traefik-rhel9
+        devspaces-udi-rhel8-container: devspaces/udi-rhel8
         devspaces-udi-rhel9-container: devspaces/udi-rhel9
         # DWO
         devworkspace-operator-bundle-container: devworkspace/devworkspace-operator-bundle
